@@ -1,82 +1,70 @@
 <template>
-  <div id="app">
-      <h1>Pesquisa de Desenvolvedores</h1>
-
-      <div class="header">
-
-        <div> 
-            <label for="name"> Por Nome:</label>
-            <input class="search" id="name" placeholder="Digite aqui"/>
-        </div>
-
-            <div class="filter">
-                <div class="option">
-                    <label>Por linguagem:</label>
-                    <input type="radio" name="option" value="e">E
-                    <input type="radio" name="option" value="ou">Ou
-                </div>
-
-                <div class="languages">
-                    <div>
-                        <input type="checkbox" name="languages" value="java">java
-                        <input type="checkbox" name="languages" value="javascript">javascript
-                    </div>
-
-                    <div>
-                        <input type="checkbox" name="languages" value="php">PHP
-                        <input type="checkbox" name="languages" value="python">Python
-                    </div>
-                </div>
-            </div>
-      </div>
-
-      <div>
-          <h4 v-text="devs.length + ' resultados'"/>
-      </div>
-
-      <div class="list">
-          <div class="card" v-for="dev in devs" :key="dev.key">
-              <div class="userImage">
-                  <img :src="dev.picture"/>
-              </div>
-
-              <div class="info">
-                  <h4 class="name"    v-text="dev.name"/>
-                  <span class="age"     v-text="dev.age + ' anos'"/>
-                  <span class="email"   v-text="dev.email"/>
-
-                  <div> 
-                      <img class="languagesIcon" v-for="lang in dev.programmingLanguages" :key="lang.key" :src="imgLang[lang.id]">
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
+    <div id="app">
+        <HeaderComponent @changeValue="newSearchValue" @changeLinguagem="newLinguagemValue" @changeModo="newModoValue"></HeaderComponent>
+        <GridComponent :devs="filtredDevs || devs"></GridComponent>
+    </div>
 </template>
 
 <script>
 import axios from 'axios'
+import HeaderComponent from './components/HeaderComponent.vue'
+import GridComponent from './components/GridComponent.vue'
 export default {
-  name: 'App',
-
-  data () {
-      return {
+    components: { HeaderComponent, GridComponent },
+    name: 'App',
+    data () {
+        return {
             devs: [],
-            imgLang: {
-                'JavaScript': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Unofficial_JavaScript_logo_2.svg/640px-Unofficial_JavaScript_logo_2.svg.png',
-                'Python': 'https://www.tshirtgeek.com.br/wp-content/uploads/2021/03/com001.jpg',
-                'Java': 'https://img.ibxk.com.br/materias/7204960/56172.jpg',
-                'Php': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/PHP-logo.svg/1200px-PHP-logo.svg.png'
-            }
-      }
-  },
-
-  created() {
-    axios.get('https://bernardosantos.zeedhi.com/workfolder/dev.php').then((Response) => {
-        this.devs = Response.data.devs
-        console.log(devs)
-    })
-  }
+            search: null,
+            modo: 'e',
+            linguagem: [],
+            filtredDevs: []
+        }
+    },
+    created () {
+        axios.get('https://bernardosantos.zeedhi.com/workfolder/dev.php').then((response) => {
+            this.devs = response.data.devs
+            this.filtredDevs = response.data.devs
+            console.log(this.devs)
+        })
+    },
+    methods: {
+        newSearchValue: function (value) {
+            this.search = value
+            this.getFiltredDevs()
+        },
+        newModoValue: function (value) {
+            this.modo = value
+            this.getFiltredDevs()
+        },
+        newLinguagemValue: function (value) {
+            this.linguagem = value
+            this.getFiltredDevs()
+        },
+        getFiltredDevs: function () {
+            let devs = this.devs
+            let escopo = this
+            escopo.filtredDevs = devs.filter( dev => {
+                let semFiltro = !escopo.search && escopo.linguagem.length === 0 //se os dois estiverem vazios eu recebo TRUE
+                let nomesBatendo = !escopo.search || escopo.getFilterCharacters(dev.name).indexOf(escopo.getFilterCharacters(escopo.search)) >= 0 //se um dos dois forem verdade eu recebo TRUE
+                let linguagensBatendo = dev.programmingLanguages.filter(programming => escopo.linguagem.indexOf(escopo.getFilterCharacters(programming.id)) >= 0)
+                if (escopo.modo === 'e') {    
+                    if (semFiltro || (nomesBatendo && (linguagensBatendo.length === escopo.linguagem.length))) {
+                        return true
+                    }
+                    return false;
+                } else {
+                    if (semFiltro || (nomesBatendo && (escopo.linguagem.length === 0 || linguagensBatendo.length >= 1))) {
+                        return true;
+                    }
+                    return false;
+                }
+            })
+        },
+        getFilterCharacters: function (value) {
+            return value.replaceAll(' ', '').toLowerCase()
+        }
+    }
 }
 </script>
 
@@ -86,40 +74,88 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
-  padding: 20px;
+  margin-top: 60px;
+  padding:20px;
 }
-
+.listagem{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(256px, 396px));
+}
+.info {
+    padding:10px 10px 10px 30px;
+}
+img {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
 label {
-  font: bold;
+    font-weight: bold;
 }
-
-.header {
+.modal {
     display: grid;
-    grid-template-columns: 70% 30% ;
+    grid-template-columns:25% 70% 5%;
+    padding:20px;
+    font-family: 'Avenir', Helvetica, Arial, sans-serif;
+    
 }
-
-.filter {
+.nameModal {
+    font-size:20px;
+    font-weight: bold;
+    padding:10px;
+}
+span {
+    font-weight: bold;
+    display:flex;
+    padding-bottom:10px;
+}
+.cabecalho {
     display: grid;
+    grid-template-columns: 70% 30%;
+}
+.opcao {
+    display:block;
+}
+.filtros {
+    display:grid;
     grid-template-columns: 30% 70%;
-
 }
-
-.options {
-    display: block;
-}
-
-.languages {
+.linguagens {
     display: inline-block;
 }
-
 .card {
-  width: 550px;
-  display: grid;
-  grid-template-columns: 25% 75%;
+    box-shadow: 0 15px 15px 1px grey;
+    border-radius: 10px;
+    display: grid;
+    margin: 10px 0 0 10px;
+    grid-template-columns: 28% 72%;
+    height: 128px;
 }
-
-.languagesIcon {
-    width: 30px;
-    height: 30px;
+.languages {
+    width:30px;
+    height: 30px;;
+}
+.name {
+    font-weight: bold;
+}
+.age {
+    font-weight: 400;
+}
+.info-modal {
+    font-size: 18px;
+    padding-left: 10px;
+    font-weight: 400;
+}
+.experiencias {
+   
+    display:flex;
+    align-self:flex-end;
+} 
+.exp {
+    padding-top:10px;
+    font-weight: 500;
+    font-size:18px;
+}
+.titulos {
+    font-weight: bold;
 }
 </style>
